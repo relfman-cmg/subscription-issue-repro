@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the subgraph, exports its SDL, and composes the Fusion gateway package.
+# Builds the subgraph, exports its SDL, and composes the Fusion archive.
 # Re-run after changing the subgraph schema.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -7,14 +7,14 @@ cd "$(dirname "$0")"
 dotnet tool restore
 dotnet build Subgraph/Subgraph.csproj -v q --nologo
 
-# Printing the schema from the built assembly keeps composition offline: no port to bind,
-# and the SDL cannot drift from what the server actually serves.
+# The filename stem must match the settings file beside it (Subgraph.graphqls -> Subgraph-settings.json);
+# the CLI derives the settings path from the schema path and fails if it is missing.
 # The trailing echo adds the final newline the SDL printer omits, so re-running this is idempotent.
-{ (cd Subgraph/bin/Debug/net10.0 && dotnet Subgraph.dll print-schema); echo; } > Subgraph/schema/schema.graphql
-echo "schema exported:"; sed -n '1,6p' Subgraph/schema/schema.graphql
+{ (cd Subgraph/bin/Debug/net10.0 && dotnet Subgraph.dll print-schema); echo; } > Subgraph/schema/Subgraph.graphqls
+echo "schema exported:"; sed -n '1,6p' Subgraph/schema/Subgraph.graphqls
 
-dotnet tool run fusion subgraph pack -w Subgraph/schema -p Subgraph.fsp --allow-roll-forward
-dotnet tool run fusion compose -s Subgraph.fsp -p gateway --settings compose-settings.json --allow-roll-forward
+# v16 composes in one step: no `subgraph pack`, no .fsp intermediate.
+dotnet tool run fusion --allow-roll-forward -- compose -s Subgraph/schema/Subgraph.graphqls -f gateway.far
 
 dotnet build Gateway/Gateway.csproj -v q --nologo
-echo "gateway.fgp composed; run ./run-subgraph.sh and ./run-gateway.sh in separate terminals"
+echo "gateway.far composed; run ./run-subgraph.sh and ./run-gateway.sh in separate terminals"

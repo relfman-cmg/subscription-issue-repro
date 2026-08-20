@@ -1,0 +1,17 @@
+schema {
+  query: Query
+  subscription: Subscription
+}
+
+type Query {
+  ping: String!
+}
+
+type Subscription {
+  onTick: Tick!
+}
+
+type Tick {
+  number: Int!
+  at: String!
+}

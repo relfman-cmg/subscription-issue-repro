@@ -9,3 +9,4 @@ logs/
 
 # Composed Fusion gateway package — regenerate with ./compose.sh
 *.fgp
+*.far

@@ -16,7 +16,7 @@ if (args.Contains("print-schema"))
     var schema = await new ServiceCollection()
                        .AddGraphQLServer()
                        .AddQueryType<Query>()
-                       .AddSubscriptionType<Subscriptions>()
+                       .AddSubscriptionType<Subscription>()
                        .AddInMemorySubscriptions()
                        .BuildSchemaAsync();
 
@@ -32,7 +32,7 @@ builder.WebHost.UseUrls("http://127.0.0.1:5311");
 builder.Services
        .AddGraphQLServer()
        .AddQueryType<Query>()
-       .AddSubscriptionType<Subscriptions>()
+       .AddSubscriptionType<Subscription>()
        .AddInMemorySubscriptions()
        .ModifyRequestOptions(o => o.IncludeExceptionDetails = true);
 
@@ -47,7 +47,9 @@ public sealed class Query
     public string Ping() => "pong";
 }
 
-public sealed class Subscriptions
+// v16 composition requires the root subscription type to be named exactly "Subscription"
+// (ROOT_SUBSCRIPTION_USED); v15 accepted "Subscriptions".
+public sealed class Subscription
 {
     [Subscribe]
     [Topic("tick")]

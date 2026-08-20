@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="HotChocolate.AspNetCore" Version="15.1.17" />
-    <PackageReference Include="HotChocolate.Fusion" Version="15.1.17" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="16.6.2-p.4" />
+    <PackageReference Include="HotChocolate.Fusion.AspNetCore" Version="16.6.2-p.4" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="../gateway.fgp" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../gateway.far" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

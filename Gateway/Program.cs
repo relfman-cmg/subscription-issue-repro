@@ -1,9 +1,9 @@
-// Minimal Fusion v15 gateway: the federation and nothing else.
+// Minimal Fusion v16 gateway: the federation and nothing else.
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls("http://127.0.0.1:5310");
 
-// Must match "clientName" in Subgraph/schema/subgraph-config.json — that is how Fusion resolves
+// Must match "clientName" in Subgraph/schema/Subgraph-settings.json — that is how Fusion resolves
 // the subgraph's HttpClient. Without it the gateway cannot reach the subgraph at all.
 builder.Services.AddHttpClient("Subgraph");
 
@@ -12,9 +12,8 @@ builder.Services.AddHttpClient("Subgraph");
 builder.Services.AddCors();
 
 builder.Services
-       .AddFusionGatewayServer()
-       .ConfigureFromFile(System.IO.Path.Combine(AppContext.BaseDirectory, "gateway.fgp"))
-       .CoreBuilder
+       .AddGraphQLGatewayServer()
+       .AddFileSystemConfiguration(System.IO.Path.Combine(AppContext.BaseDirectory, "gateway.far"))
        // Otherwise the gateway reports "Unknown subscription error" and swallows the cause.
        .ModifyRequestOptions(o => o.IncludeExceptionDetails = true);
 

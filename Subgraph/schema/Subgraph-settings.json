@@ -1,0 +1,9 @@
+{
+  "name": "Subgraph",
+  "transports": {
+    "http": {
+      "clientName": "Subgraph",
+      "url": "http://localhost:5311/graphql"
+    }
+  }
+}
