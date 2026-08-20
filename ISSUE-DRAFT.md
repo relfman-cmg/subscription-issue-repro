@@ -21,9 +21,10 @@ Fusion: a subgraph subscription that stops responding without closing the connec
 1. `./compose.sh`
 2. `TICK_SECONDS=0 ./run-subgraph.sh` (terminal 1) — a subgraph with a subscription that emits nothing, i.e. a normally idle subscription
 3. `./run-gateway.sh` (terminal 2) — a Fusion gateway federating only that subgraph
-4. Subscribe through the gateway, over either transport:
-   - WebSocket: `ws://127.0.0.1:5310/graphql`
-   - SSE: `POST http://127.0.0.1:5310/graphql` with `Accept: text/event-stream`
+4. Subscribe through the gateway. We used Nitro at `http://127.0.0.1:5310/graphql`, which
+   connects over `graphql-transport-ws`; `{"type":"connection_ack"}` comes back on the socket,
+   confirming the subscription is live end to end. SSE behaves the same way
+   (`POST http://127.0.0.1:5310/graphql` with `Accept: text/event-stream`).
 5. Freeze the subgraph, leaving its process and TCP connection alive:
    ```
    kill -STOP $(lsof -t -nP -iTCP:5311 -sTCP:LISTEN)
@@ -42,8 +43,8 @@ time and terminates the client subscription with an error, so the client can res
 ## What is actually happening?
 
 The gateway waits forever. There is no exception, no completion, no error frame and no log
-entry. The client's subscription stays open and keeps receiving transport keepalives
-(WebSocket pings), so it looks healthy while it will never deliver another event. On a
+entry. In Nitro the subscription simply stops producing `next` frames while `ping` frames keep
+arriving, so it looks healthy while it will never deliver another event. On a
 subscription that emits no events — the normal state for one carrying occasional business
 events — a healthy subscription and a permanently dead one are byte-for-byte identical from
 the client's point of view.
