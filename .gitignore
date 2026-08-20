@@ -1,0 +1,11 @@
+# Build output contains absolute local paths and the machine's user name.
+bin/
+obj/
+logs/
+*.fsp
+
+# Rider/IDE local state
+.idea/
+
+# Composed Fusion gateway package — regenerate with ./compose.sh
+*.fgp

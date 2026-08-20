@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "hotchocolate.fusion.commandline": {
+      "version": "15.1.17",
+      "commands": [
+        "fusion"
+      ],
+      "rollForward": false
+    }
+  }
+}

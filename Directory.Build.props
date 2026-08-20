@@ -1,0 +1,7 @@
+<Project>
+  <!--
+    Deliberately does NOT import the repository's Directory.Build.props. This is a standalone
+    reproduction pinned to a specific HotChocolate version, so it must not inherit central package
+    management, the banned-symbols analyzer, or repo-wide warning settings.
+  -->
+</Project>

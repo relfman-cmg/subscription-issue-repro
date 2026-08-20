@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Versions are pinned per-project here on purpose; the repo's central versions do not apply. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>
