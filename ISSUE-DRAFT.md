@@ -19,23 +19,24 @@ Fusion: a subgraph subscription that stalls without closing the connection is ne
 ## Steps to reproduce
 
 1. `chmod +x *.sh && ./compose.sh`
-2. `./run-subgraph.sh` (terminal 1) — a subgraph emitting `onTick` every 5s
+2. `./run-subgraph.sh` (terminal 1) — a subgraph whose `onTick` subscription emits nothing. This
+   is the normal state for a subscription carrying occasional business events: idle nearly all
+   the time.
 3. `./run-gateway.sh` (terminal 2) — a Fusion gateway federating only that subgraph
 4. Subscribe through the gateway with `subscription { onTick { number at } }`. We used Nitro at
-   `http://127.0.0.1:5310/graphql`: `{"type":"connection_ack"}` comes back on the
-   `graphql-transport-ws` socket, and a `next` frame then arrives every 5s — so the subscription
-   is delivering end to end. SSE behaves the same way (`POST` the same endpoint with
-   `Accept: text/event-stream`).
+   `http://127.0.0.1:5310/graphql`, which connects over `graphql-transport-ws`;
+   `{"type":"connection_ack"}` comes back on the socket and the subscription sits open. SSE
+   behaves the same way (`POST` the same endpoint with `Accept: text/event-stream`).
 5. Freeze the subgraph, leaving its process and TCP connection alive:
    ```
    kill -STOP $(lsof -t -nP -iTCP:5311 -sTCP:LISTEN)
    ```
-6. Wait. No error, no completion, and nothing in the gateway log.
+6. Wait. Nothing changes: no error, no completion, nothing in the gateway log, and `ping` frames
+   keep arriving. The subscription is permanently dead and looks exactly as it did while healthy.
 
-Running step 2 as `TICK_SECONDS=0 ./run-subgraph.sh` instead gives the case that matters in
-production — a subscription carrying occasional business events, so idle most of the time.
-There the frozen state is not merely undetected by the gateway but indistinguishable to the
-client, because there is no gap in `next` frames to notice.
+Repeating this with `TICK_SECONDS=5 ./run-subgraph.sh` shows the delivery side: `next` frames
+arrive every 5s and stop the instant the subgraph is frozen, still with no error, no completion
+and no log entry.
 
 `SIGSTOP` reproduces the production condition exactly: the peer stops responding at the
 application layer while the kernel keeps the socket open and keeps acknowledging. The same
@@ -49,10 +50,11 @@ time and terminates the client subscription with an error, so the client can res
 ## What is actually happening?
 
 The gateway waits forever. There is no exception, no completion, no error frame and no log
-entry. In Nitro the subscription stops producing `next` frames while `ping` frames keep
-arriving, so it looks healthy while it will never deliver another event. On an idle
-subscription there is not even a gap in delivery to notice: a healthy subscription and a
-permanently dead one are byte-for-byte identical from the client's point of view.
+entry. In Nitro the subscription stays open and `ping` frames keep arriving, so it looks
+healthy while it will never deliver another event. On an idle subscription there is not even a
+gap in delivery to notice: a healthy subscription and a permanently dead one are byte-for-byte
+identical from the client's point of view. With events flowing the only signal is their
+absence, which is indistinguishable from a quiet period.
 
 ## Relevant log output
 

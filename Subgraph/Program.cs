@@ -1,11 +1,11 @@
-// Minimal subgraph: one subscription on a timer, plus the query type Fusion requires.
+// Minimal subgraph: one subscription, plus the query type Fusion requires.
 //
 //   dotnet run                    serve on http://127.0.0.1:5311/graphql
 //   dotnet run -- print-schema    write the SDL to stdout and exit (used by compose.sh)
 //
-// TICK_SECONDS sets the event interval; 0 emits nothing. A silent subgraph is the realistic case —
-// subscriptions carrying occasional business events sit idle most of the time, and that is exactly
-// when a client cannot tell a live subscription from a dead one.
+// By default it emits nothing at all. That is the realistic case: subscriptions carrying occasional
+// business events sit idle most of the time, and that is exactly when a client cannot tell a live
+// subscription from a dead one. Set TICK_SECONDS=5 to watch delivery working before the freeze.
 using HotChocolate.Execution;
 using HotChocolate.Subscriptions;
 
@@ -62,11 +62,11 @@ internal sealed class Ticker(ITopicEventSender sender, ILogger<Ticker> logger) :
     {
         var interval = int.TryParse(Environment.GetEnvironmentVariable("TICK_SECONDS"), out var seconds)
                            ? seconds
-                           : 5;
+                           : 0;
 
         if (interval <= 0)
         {
-            logger.LogInformation("TICK_SECONDS={Interval}: emitting no events. The client will see only pings.", interval);
+            logger.LogInformation("Emitting no events (TICK_SECONDS={Interval}). The client will see only pings.", interval);
             return;
         }
 
