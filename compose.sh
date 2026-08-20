@@ -9,7 +9,8 @@ dotnet build Subgraph/Subgraph.csproj -v q --nologo
 
 # Printing the schema from the built assembly keeps composition offline: no port to bind,
 # and the SDL cannot drift from what the server actually serves.
-(cd Subgraph/bin/Debug/net10.0 && dotnet Subgraph.dll print-schema) > Subgraph/schema/schema.graphql
+# The trailing echo adds the final newline the SDL printer omits, so re-running this is idempotent.
+{ (cd Subgraph/bin/Debug/net10.0 && dotnet Subgraph.dll print-schema); echo; } > Subgraph/schema/schema.graphql
 echo "schema exported:"; sed -n '1,6p' Subgraph/schema/schema.graphql
 
 dotnet tool run fusion subgraph pack -w Subgraph/schema -p Subgraph.fsp --allow-roll-forward
