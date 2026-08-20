@@ -30,10 +30,9 @@ Fusion: a subgraph subscription that stops responding without closing the connec
    ```
 6. Wait indefinitely.
 
-`SIGSTOP` is used because it reproduces the production condition exactly: the peer stops
-responding at the application layer while the kernel keeps the socket open and keeps
-acknowledging packets. The same state occurs when a pod is evicted or a node disappears —
-no FIN or RST reaches the gateway, and packets to the old address are silently dropped.
+`SIGSTOP` reproduces the production condition exactly: the peer stops responding at the
+application layer while the kernel keeps the socket open and keeps acknowledging. The same
+state occurs when a pod is evicted or a node disappears — no FIN or RST reaches the gateway.
 
 ## What is expected?
 
@@ -43,13 +42,11 @@ time and terminates the client subscription with an error, so the client can res
 ## What is actually happening?
 
 The gateway waits forever. There is no exception, no completion, no error frame and no log
-entry on the gateway. The client's subscription stays open and continues to receive
-transport keepalives (WebSocket pings), so from the client's perspective the subscription
-looks healthy while it will never deliver another event.
-
-With a subscription that emits no events — the normal state for one carrying occasional
-business events — a healthy subscription and a permanently dead one are byte-for-byte
-identical from the client's point of view.
+entry. The client's subscription stays open and keeps receiving transport keepalives
+(WebSocket pings), so it looks healthy while it will never deliver another event. On a
+subscription that emits no events — the normal state for one carrying occasional business
+events — a healthy subscription and a permanently dead one are byte-for-byte identical from
+the client's point of view.
 
 ## Relevant log output
 

@@ -2,8 +2,7 @@
 
 A Fusion gateway pinned to **HotChocolate 15.1.17** never notices when a subgraph stops
 delivering a subscription without closing the connection. The gateway waits on
-`MoveNextAsync` forever: no exception, no close frame, no log line. A client on a
-WebSocket keeps receiving its own protocol pings and believes the subscription is healthy.
+`MoveNextAsync` forever: no exception, no close frame, no log line.
 
 Two projects, no database, no auth, no broker — so a hang can only be attributed to the
 subgraph subscription transport.
@@ -39,40 +38,15 @@ Ticks should appear every 5s. Then freeze the subgraph:
 kill -STOP $(lsof -t -nP -iTCP:5311 -sTCP:LISTEN)
 ```
 
-`SIGSTOP` leaves the process and its TCP connection alive, so nothing is closed. This is
-the same condition as a pod frozen, or killed without a graceful shutdown — and notably
-**TCP keepalive does not detect it**, because the kernel keeps acknowledging while the
-process is stopped.
+`SIGSTOP` leaves the process and its TCP connection alive, so nothing is closed — the same
+condition as a pod frozen, or killed without a graceful shutdown. TCP keepalive does not
+detect it: the kernel keeps acknowledging while the process is stopped. Resume with
+`kill -CONT <pid>`.
 
-Resume with `kill -CONT <pid>`.
+`python3 repro.py` scripts the whole sequence; `python3 ws-probe.py` shows the same thing
+over a WebSocket. `./check-frozen.sh` confirms the subgraph is frozen and the gateway is not.
 
-### Expected (the defect)
-
-The probe goes silent and stays silent. No error frame, no `event: complete`, no
-exception anywhere. The gateway holds the subscription open indefinitely.
-
-### What to watch
-
-Whether SSE keepalive comments (`:`) keep arriving during the freeze. They are emitted by
-`EventStreamResultFormatter.KeepAliveJob` — a 12s timer that writes `:\n\n` when the stream
-has been quiet for 8s — and the gateway's SSE reader consumes them without surfacing them
-as events.
-
-That distinction is the whole design constraint for a fix: an idle healthy stream still
-carries **bytes** but produces no **events**. So a read deadline must sit on the response
-stream, not around the deserialized event sequence — at the event layer, idle and dead are
-identical and any timeout would kill working subscriptions.
-
-## Note on v16
-
-`ChilliCream/fusion-demo` will not reproduce this. It pins HotChocolate 16.6.0-p.8 and its
-gateway uses `AddNatsEventStreamBroker`, so subscription events reach the gateway through
-NATS JetStream rather than a per-subscriber SSE stream. The transport at fault here is not
-in play there.
-
-## Verified output
-
-Run on HotChocolate 15.1.17 via `python3 repro.py`:
+## Result
 
 ```
 +   2.3s subscribed: HTTP 200 text/event-stream; charset=utf-8
@@ -92,27 +66,35 @@ Run on HotChocolate 15.1.17 via `python3 repro.py`:
 RESULT  data frames=4  keepalives=7
 ```
 
-Data stops at the freeze. No error frame, no `event: complete`, no exception — 90 seconds later
-the subscription is still open and still silent.
+Data stops at the freeze. No error frame, no `event: complete`, no exception — 90 seconds
+later the subscription is still open and still silent.
 
-**The keepalives are the point.** They are emitted by the *gateway's* own response formatter to
-its client, on a 12s timer, and they keep arriving while the gateway receives nothing from the
-frozen subgraph. Keepalives are per-hop: each SSE producer runs its own timer, so bytes arriving
-on the downstream hop say nothing about upstream health.
+**The keepalives are the point.** Those `:` comments come from the *gateway's* own
+`EventStreamResultFormatter.KeepAliveJob` — a 12s timer that fires when its stream has been
+quiet for 8s — so they keep arriving while the gateway receives nothing from the frozen
+subgraph. Keepalives are per-hop: bytes on the downstream hop say nothing about upstream
+health. A WebSocket client sees the same illusion one layer up, in protocol pings.
 
-That is the same illusion a WebSocket client hits one layer up — the gateway keeps sending
-protocol pings from a healthy pod while the subscription behind it is dead. A client watching
-heartbeats cannot distinguish a working subscription from a broken one.
+That also fixes the shape of any fix. The subgraph emits keepalives while healthy and idle,
+but `HotChocolate.Transport.Http`'s SSE reader consumes them without yielding a result — so
+an idle stream and a dead one are identical at the event layer and distinguishable only at
+the byte layer. A read deadline must sit on the response stream; one around the event
+sequence would kill working subscriptions.
+
+## Note on v16
+
+`ChilliCream/fusion-demo` will not reproduce this. It pins 16.6.0-p.8 and its gateway uses
+`AddNatsEventStreamBroker`, so events reach it through NATS JetStream rather than a
+per-subscriber SSE stream. The transport at fault here is not in play.
 
 ## Environment gotchas
 
-Two things unrelated to the defect that will otherwise waste your time:
+Unrelated to the defect, but they will waste your time:
 
-- **Use `localhost`, not `127.0.0.1`.** Under a network-restricted sandbox the gateway's outbound
-  connection to a literal loopback IP fails with `SocketException (13): Permission denied`, which
-  surfaces as an immediately-closed SSE stream. Both `UseUrls` and `subgraph-config.json` use
-  `localhost` here.
+- **Use `localhost`, not `127.0.0.1`.** Under a network-restricted sandbox the gateway's
+  outbound connection to a literal loopback IP fails with `SocketException (13): Permission
+  denied`, surfacing as an immediately-closed SSE stream.
 - **`DOTNET_hostBuilder__reloadConfigOnChange=false`** (set by the run scripts). The default
   `appsettings.json` file-watcher recurses until the stack overflows on tmpfs and container
-  overlay filesystems, killing the process inside `WebApplication.CreateBuilder` before it logs
-  anything.
+  overlay filesystems, killing the process inside `WebApplication.CreateBuilder` before it
+  logs anything.

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Confirms the subgraph is frozen and the gateway is not.
 #
-# A frozen process keeps its listening socket, so "is the port open" proves nothing. What
-# distinguishes frozen from healthy is that the TCP connection still completes while the
-# application never answers — which is exactly the production condition being reproduced.
+# A frozen process keeps its listening socket, so "is the port open" proves nothing: the TCP
+# connection still completes while the application never answers.
 set -uo pipefail
 
 SUBGRAPH_PORT=${SUBGRAPH_PORT:-5311}

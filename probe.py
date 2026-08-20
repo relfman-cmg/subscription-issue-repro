@@ -3,20 +3,13 @@
 
     python3 probe.py [seconds]
 
-Run it, then freeze the subgraph from another terminal:
+Then freeze the subgraph from another terminal:
 
     kill -STOP $(lsof -t -nP -iTCP:5311 -sTCP:LISTEN)
 
-SIGSTOP leaves the process and its TCP connection alive, so nothing is closed -- the same
-condition as a pod frozen or killed without a graceful shutdown.
-
-On vanilla HotChocolate 15.1.17 the output simply stops. No error frame, no completion,
-no exception: the gateway is still awaiting MoveNextAsync on a peer that will never speak
-again, and a dead subscription is indistinguishable from an idle one.
-
-Lines starting with ':' are SSE keepalive comments. Watch whether they keep arriving
-during the freeze -- they are what makes a read deadline safe rather than a false-positive
-machine.
+On 15.1.17 the output simply stops: no error frame, no completion, no exception. Lines
+starting with ':' are keepalive comments -- watch whether they keep arriving during the
+freeze, since that is what makes a read deadline safe rather than a false-positive machine.
 """
 import http.client
 import json

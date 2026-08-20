@@ -3,15 +3,14 @@
 
     python3 ws-probe.py [seconds]
 
-This is the client's-eye view of the customer complaint. Freeze the subgraph:
+Then freeze the subgraph:
 
     kill -STOP $(lsof -t -nP -iTCP:5311 -sTCP:LISTEN)
 
-'next' frames stop. 'ping' frames keep arriving, because the gateway generating them is
-healthy. That is exactly what the customer saw and why they believed the subscription
-was working.
+'next' frames stop while 'ping' frames keep arriving, because the gateway generating them is
+healthy. That is the client's-eye view of the defect.
 
-Minimal hand-rolled WebSocket client: stdlib only, text frames, no extensions.
+Minimal hand-rolled client: stdlib only, text frames, no extensions.
 """
 import base64
 import json
@@ -139,7 +138,7 @@ def main():
             print(f"{stamp} {kind}  {json.dumps(msg)[:120]}")
 
     print(f"\nRESULT {json.dumps(counts)}")
-    print("Heartbeats without 'next' frames is the customer's exact experience.")
+    print("Heartbeats without 'next' frames is the defect.")
 
 
 if __name__ == "__main__":
